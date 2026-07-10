@@ -1,0 +1,50 @@
+from typing import List
+
+class Solution:
+    def pathExistenceQueries(self, n: int, nums: List[int], maxDiff: int, queries: List[List[int]]) -> List[int]:
+        order = sorted(range(n), key=lambda i: nums[i])
+        val = [nums[i] for i in order]
+        pos = [0] * n
+        for sp, orig in enumerate(order):
+            pos[orig] = sp
+
+        # component id: breaks whenever consecutive sorted diff > maxDiff
+        comp = [0] * n
+        for i in range(1, n):
+            comp[i] = comp[i - 1] if val[i] - val[i - 1] <= maxDiff else comp[i - 1] + 1
+
+        # hi[i]: farthest index reachable in exactly one edge, moving right
+        hi = [0] * n
+        j = 0
+        for i in range(n):
+            if j < i:
+                j = i
+            while j + 1 < n and val[j + 1] - val[i] <= maxDiff:
+                j += 1
+            hi[i] = j
+
+        LOG = max(1, n.bit_length())
+        up = [hi[:]]
+        for k in range(1, LOG):
+            prev = up[-1]
+            up.append([prev[prev[i]] for i in range(n)])
+
+        ans = []
+        for u, v in queries:
+            if u == v:
+                ans.append(0)
+                continue
+            p, q = pos[u], pos[v]
+            if comp[p] != comp[q]:
+                ans.append(-1)
+                continue
+            if p > q:
+                p, q = q, p
+            cur, steps = p, 0
+            for k in range(LOG - 1, -1, -1):
+                if up[k][cur] < q:
+                    cur = up[k][cur]
+                    steps += (1 << k)
+            steps += 1  # final hop reaches or passes q
+            ans.append(steps)
+        return ans
